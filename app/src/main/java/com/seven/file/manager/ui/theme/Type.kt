@@ -6,7 +6,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.sp
 import com.seven.basis.dimens.asp
 
 /**
@@ -62,7 +61,7 @@ val typography: Typography
             fontWeight = FontWeight.Normal,
             fontSize = 13.asp,
             lineHeight = 18.asp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant // 映射次级文字（浅色深灰，深色纯白）
+            color = MaterialTheme.colorScheme.outline // 映射次级文字（浅色深灰，深色纯白）
         ),
 
         // ==================== 标签/辅助系列 ====================

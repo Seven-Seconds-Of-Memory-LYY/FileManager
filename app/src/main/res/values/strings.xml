@@ -5,4 +5,12 @@
     <string name="image">图片</string>
     <string name="video">视频</string>
     <string name="audio">音频</string>
+    <string name="category">类别</string>
+    <string name="all_store_space">所有存储空间</string>
+    <string name="phone">手机</string>
+    <string name="internal_storage">内部存储</string>
+    <string name="external_storage_devices">外部存储设备</string>
+    <string name="unknown_storage">未知存储</string>
+    <string name="external_storage_disk">外置存储盘</string>
+    <string name="set">设置</string>
 </resources>

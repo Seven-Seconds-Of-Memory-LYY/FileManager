@@ -1,23 +1,129 @@
 package com.seven.file.manager.tool
 
+import android.app.usage.StorageStatsManager
 import android.content.ContentUris
 import android.content.Context
 import android.database.ContentObserver
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper
+import android.os.storage.StorageManager
+import android.os.storage.StorageVolume
 import android.provider.MediaStore
+import com.seven.basis.timberTool.TimberTool
+import com.seven.file.manager.R
 import com.seven.file.manager.entity.MediaCategory
 import com.seven.file.manager.entity.MediaCount
 import com.seven.file.manager.entity.MediaFile
+import com.seven.file.manager.entity.StorageSpace
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
+import java.util.UUID
+import kotlin.time.Duration.Companion.milliseconds
 
 class MediaRepository(private val context: Context) {
+    /**
+     * 单次获取内部和外部存储空间（兼容 API 29+）
+     */
+    suspend fun getStorageSpaces(): List<StorageSpace> = withContext(Dispatchers.IO) {
+        TimberTool.iArgs("getStorageSpaces start")
+        val storageList = mutableListOf<StorageSpace>()
+        val storageManager = context.getSystemService(Context.STORAGE_SERVICE) as StorageManager
+        val storageStatsManager = context.getSystemService(Context.STORAGE_STATS_SERVICE) as StorageStatsManager
+
+        // 获取所有存储卷
+        val volumes: List<StorageVolume> = storageManager.storageVolumes
+
+        for (volume in volumes) {
+            // 核心过滤：只处理已经成功挂载（可读写）的物理设备
+            if (volume.state != android.os.Environment.MEDIA_MOUNTED) {
+                continue
+            }
+
+            try {
+                val uuidString = volume.uuid
+                val uuid: UUID = if (uuidString == null) {
+                    StorageManager.UUID_DEFAULT
+                } else {
+                    UUID.fromString(uuidString)
+                }
+
+                // 统一高精度获取容量
+                val totalBytes = storageStatsManager.getTotalBytes(uuid)
+                val freeBytes = storageStatsManager.getFreeBytes(uuid)
+
+                // 获取本地化盘符名称（系统会自动识别出诸如 "SD 卡" 或 U盘品牌的名称）
+                val description = volume.getDescription(context) ?: when {
+                    volume.isPrimary -> context.getString(R.string.internal_storage)
+                    volume.isRemovable -> context.getString(R.string.external_storage_devices)
+                    else -> context.getString(R.string.unknown_storage)
+                }
+
+                storageList.add(
+                    StorageSpace(
+                        id = uuidString ?: "primary",
+                        description = description,
+                        isPrimary = volume.isPrimary,
+                        isRemovable = volume.isRemovable, // 关键属性：识别是否为外置多设备
+                        totalBytes = totalBytes,
+                        freeBytes = freeBytes
+                    )
+                )
+            } catch (e: Exception) {
+                e.printStackTrace()
+                // 针对 API 29 的标准 File API 降级物理多设备兼容
+                val path = if (volume.isPrimary) {
+                    android.os.Environment.getExternalStorageDirectory()
+                } else {
+                    File("/storage/${volume.uuid}")
+                }
+
+                if (path.exists() && path.canRead()) {
+                    val description = volume.getDescription(context) ?: if (volume.isPrimary) {
+                        context.getString(R.string.internal_storage)
+                    } else {
+                        context.getString(R.string.external_storage_disk)
+                    }
+                    storageList.add(
+                        StorageSpace(
+                            id = volume.uuid ?: "primary_fallback",
+                            description = description,
+                            isPrimary = volume.isPrimary,
+                            isRemovable = volume.isRemovable,
+                            totalBytes = path.totalSpace,
+                            freeBytes = path.freeSpace
+                        )
+                    )
+                }
+            }
+        }
+        TimberTool.iArgs("getStorageSpaces storageList size ${storageList.size}")
+        return@withContext storageList
+    }
+
+    /**
+     * 实时监听存储变动（通过定时轮询 + 随媒体监听器联动刷新）
+     */
+    fun observeStorageSpaces(pollIntervalMs: Long = 20000): Flow<List<StorageSpace>> = callbackFlow {
+        // 定时轮询器：因为系统不会高频回调存储大小变动，通过每 20 秒（可调）轮询一次最新值
+        val job = launch(Dispatchers.IO) {
+            while (isActive) {
+                send(getStorageSpaces())
+                delay(pollIntervalMs.milliseconds)
+            }
+        }
+
+        awaitClose {
+            job.cancel()
+        }
+    }
 
     /**
      * 1. 纯粹的计数扫描（一次性拉取数量）
@@ -42,6 +148,7 @@ class MediaRepository(private val context: Context) {
             }
             return 0
         }
+
         val imageCount = getCountForMime(MediaCategory.IMAGE.toMimePrefix())
         val audioCount = getCountForMime(MediaCategory.AUDIO.toMimePrefix())
         val videoCount = getCountForMime(MediaCategory.VIDEO.toMimePrefix())

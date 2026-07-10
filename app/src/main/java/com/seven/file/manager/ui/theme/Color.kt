@@ -4,6 +4,8 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
 
+val Color_Blue = Color(0xFF4285F4)
+
 // --- 基础灰阶原子值 ---
 val MonoWhite = Color(0xFFFFFFFF)       // 纯白
 val MonoGray50 = Color(0xFFF5F5F5)      // 极浅灰（大背景）

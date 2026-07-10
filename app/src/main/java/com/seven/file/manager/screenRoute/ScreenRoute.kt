@@ -1,6 +1,10 @@
 package com.seven.file.manager.screenRoute
 
+import android.net.Uri
+import com.seven.file.manager.entity.StorageSpace
+import com.seven.file.manager.tool.UriSerializer
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Serializer
 
 /**
  * CreateData:     2026/1/15
@@ -20,6 +24,9 @@ sealed class ScreenRoute(
      */
     @Serializable
     object Main : ScreenRoute()
+
+    @Serializable
+    data class FileDirectory(val storageSpace: StorageSpace) : ScreenRoute()
 
 
 }

@@ -12,6 +12,7 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
+import com.seven.file.manager.ui.FileDirectoryScreen
 import com.seven.file.manager.ui.MainScreen
 
 // 定义全局配置容器
@@ -65,10 +66,15 @@ fun NavGraphBuilder.registerAllScreens(navController: NavHostController) {
     val sentinel = { route: ScreenRoute ->
         when (route) {
             ScreenRoute.Main -> {}
+            is ScreenRoute.FileDirectory -> {}
         }
     }
 
     screen<ScreenRoute.Main> {
-        MainScreen(navController)
+        MainScreen(navController = navController)
+    }
+    screen<ScreenRoute.FileDirectory> {
+        val storageSpace = it.toRoute<ScreenRoute.FileDirectory>().storageSpace
+        FileDirectoryScreen(storageSpace = storageSpace, navController = navController)
     }
 }
