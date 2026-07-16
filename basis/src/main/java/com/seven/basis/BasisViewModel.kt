@@ -1,6 +1,7 @@
-package com.seven.basis.net
+package com.seven.basis
 
 import android.app.Application
+import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -8,8 +9,9 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
-import com.seven.basis.BasisAction
-import com.seven.basis.R
+import com.seven.basis.net.BasisHttpException
+import com.seven.basis.net.BasisResponseEntity
+import com.seven.basis.net.HttpCode
 import com.seven.basis.timberTool.TimberTool
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -31,7 +33,7 @@ import java.net.SocketTimeoutException
  * Description:    基础ViewModel
  */
 open class BasisViewModel(application: Application) : AndroidViewModel(application), IEventViewModel, LifecycleEventObserver {
-    protected val mContext by lazy {
+    protected val mContext: Context by lazy {
         application.applicationContext
     }
 

@@ -1,6 +1,5 @@
-package com.seven.basis.net
+package com.seven.basis
 
-import com.seven.basis.BasisAction
 import kotlinx.coroutines.flow.SharedFlow
 
 /**

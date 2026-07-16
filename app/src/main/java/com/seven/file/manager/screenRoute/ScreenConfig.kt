@@ -10,10 +10,16 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
+import com.seven.file.manager.entity.StorageSpace
+import com.seven.file.manager.entity.StorageSpaceNavType
 import com.seven.file.manager.ui.FileDirectoryScreen
 import com.seven.file.manager.ui.MainScreen
+import com.seven.file.manager.ui.MediaFilesScreen
+import kotlin.reflect.KType
+import kotlin.reflect.typeOf
 
 // 定义全局配置容器
 val LocalScreenConfig = compositionLocalOf<MutableState<ScreenRoute>> {
@@ -31,6 +37,7 @@ val LocalScreenConfig = compositionLocalOf<MutableState<ScreenRoute>> {
  * @param content
  */
 inline fun <reified T : Any> NavGraphBuilder.screen(
+    typeMap: Map<KType, @JvmSuppressWildcards NavType<*>> = emptyMap(),
     noinline enterTransition: (AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition?)? = null,
     noinline exitTransition: (AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition?)? = null,
     noinline popEnterTransition: (AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition?)? = null,
@@ -38,6 +45,7 @@ inline fun <reified T : Any> NavGraphBuilder.screen(
     noinline content: @Composable (NavBackStackEntry) -> Unit
 ) {
     composable<T>(
+        typeMap = typeMap,
         enterTransition = enterTransition,
         exitTransition = exitTransition,
         popEnterTransition = popEnterTransition,
@@ -67,14 +75,23 @@ fun NavGraphBuilder.registerAllScreens(navController: NavHostController) {
         when (route) {
             ScreenRoute.Main -> {}
             is ScreenRoute.FileDirectory -> {}
+            is ScreenRoute.MediaFiles -> {}
         }
     }
 
     screen<ScreenRoute.Main> {
         MainScreen(navController = navController)
     }
-    screen<ScreenRoute.FileDirectory> {
+    screen<ScreenRoute.FileDirectory>(
+        typeMap = mapOf(
+            typeOf<StorageSpace>() to StorageSpaceNavType
+        )
+    ) {
         val storageSpace = it.toRoute<ScreenRoute.FileDirectory>().storageSpace
         FileDirectoryScreen(storageSpace = storageSpace, navController = navController)
+    }
+    screen<ScreenRoute.MediaFiles> {
+        val mediaCategoryName = it.toRoute<ScreenRoute.MediaFiles>().mediaCategoryName
+        MediaFilesScreen(mediaCategory = mediaCategoryName, navController = navController)
     }
 }

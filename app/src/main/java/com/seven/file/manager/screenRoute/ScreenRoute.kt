@@ -1,10 +1,7 @@
 package com.seven.file.manager.screenRoute
 
-import android.net.Uri
 import com.seven.file.manager.entity.StorageSpace
-import com.seven.file.manager.tool.UriSerializer
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.Serializer
 
 /**
  * CreateData:     2026/1/15
@@ -25,8 +22,21 @@ sealed class ScreenRoute(
     @Serializable
     object Main : ScreenRoute()
 
+    /**
+     * File directory 文件浏览
+     *
+     * @property storageSpace the storage space
+     */
     @Serializable
     data class FileDirectory(val storageSpace: StorageSpace) : ScreenRoute()
+
+    /**
+     * Media files 媒体文件列表
+     *
+     * @property mediaCategoryName the media category name 媒体分类名称
+     */
+    @Serializable
+    data class MediaFiles(val mediaCategoryName: String) : ScreenRoute()
 
 
 }

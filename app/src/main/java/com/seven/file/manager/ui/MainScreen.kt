@@ -1,5 +1,8 @@
 package com.seven.file.manager.ui
 
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -34,10 +37,16 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
@@ -56,6 +65,7 @@ import com.seven.file.manager.entity.MediaCount
 import com.seven.file.manager.entity.StorageSpace
 import com.seven.file.manager.extensions.bytesToGB
 import com.seven.file.manager.screenRoute.ScreenRoute
+import com.seven.file.manager.ui.dialog.BasisPromptDialog
 import com.seven.file.manager.ui.theme.Color_Blue
 import com.seven.file.manager.ui.theme.FileManagerTheme
 import com.seven.file.manager.viewModel.MediaViewModel
@@ -72,6 +82,39 @@ fun MainScreen(navController: NavController) {
     val mediaCount by mediaViewModel.mediaCountState.collectAsStateWithLifecycle()
     val storageList by mediaViewModel.storageState.collectAsStateWithLifecycle()
 
+    val context = LocalContext.current
+
+    // 注册 Activity 结果回调：当用户从系统设置页返回时触发
+    val startSettingLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { _ ->
+        if (mediaViewModel.hasFullStoragePermission()) {
+            Toast.makeText(context, "已获得全部文件访问权限！", Toast.LENGTH_SHORT).show()
+            mediaViewModel.storageSpace.value?.let { storageSpace ->
+                navController.navigate(ScreenRoute.FileDirectory(storageSpace))
+                mediaViewModel.updateStorageSpace(null)
+            }
+        } else {
+            Toast.makeText(context, "未获得权限，部分功能可能无法使用。", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    val storageSpace = mediaViewModel.storageSpace.collectAsStateWithLifecycle()
+    storageSpace.value?.let {
+        BasisPromptDialog(
+            onDismissRequest = {
+                mediaViewModel.updateStorageSpace(null)
+            },
+            onConfirm = {
+                mediaViewModel.repository.requestAllFilesPermission(launchIntent = {
+                    startSettingLauncher.launch(it)
+                })
+            },
+            title = "权限请求",
+            text = "获取全部文件访问权限"
+        )
+    }
+
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
@@ -80,6 +123,7 @@ fun MainScreen(navController: NavController) {
         content = {
             MainContent(
                 navController = navController,
+                mediaViewModel = mediaViewModel,
                 mediaCount = mediaCount,
                 storageList = storageList,
                 drawerShow = {
@@ -167,6 +211,7 @@ private fun DrawerContent(navController: NavController) {
 @Composable
 private fun MainContent(
     navController: NavController,
+    mediaViewModel: MediaViewModel,
     drawerShow: () -> Unit = {},
     mediaCount: MediaCount,
     storageList: List<StorageSpace>
@@ -244,11 +289,23 @@ private fun MainContent(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(10.adp)
                     ) {
-                        MediaCategoryEntrance(count = mediaCount.imageCount, type = MediaCategory.IMAGE)
+                        MediaCategoryEntrance(
+                            navController = navController,
+                            count = mediaCount.imageCount,
+                            type = MediaCategory.IMAGE
+                        )
 
-                        MediaCategoryEntrance(count = mediaCount.audioCount, type = MediaCategory.AUDIO)
+                        MediaCategoryEntrance(
+                            navController = navController,
+                            count = mediaCount.audioCount,
+                            type = MediaCategory.AUDIO
+                        )
 
-                        MediaCategoryEntrance(count = mediaCount.videoCount, type = MediaCategory.VIDEO)
+                        MediaCategoryEntrance(
+                            navController = navController,
+                            count = mediaCount.videoCount,
+                            type = MediaCategory.VIDEO
+                        )
                     }
                 }
 
@@ -269,7 +326,11 @@ private fun MainContent(
                             if (index > 0) {
                                 Spacer(modifier = Modifier.height(height = 10.adp))
                             }
-                            StorageEntrance(navController = navController, storageSpace = space)
+                            StorageEntrance(
+                                navController = navController,
+                                storageSpace = space,
+                                mediaViewModel = mediaViewModel
+                            )
                         }
                     }
                 }
@@ -279,13 +340,18 @@ private fun MainContent(
 }
 
 @Composable
-private fun LazyItemScope.StorageEntrance(navController: NavController, storageSpace: StorageSpace) {
+private fun LazyItemScope.StorageEntrance(
+    navController: NavController,
+    storageSpace: StorageSpace,
+    mediaViewModel: MediaViewModel
+) {
     val progress = BigDecimal(storageSpace.usedBytes)
         .divide(
             BigDecimal(storageSpace.totalBytes),
             10,
             RoundingMode.HALF_DOWN
         ).toFloat()
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -294,7 +360,11 @@ private fun LazyItemScope.StorageEntrance(navController: NavController, storageS
                 shape = RoundedCornerShape(size = 12.adp)
             )
             .noRippleClickable(enabled = true, onClick = {
-                navController.navigate(ScreenRoute.FileDirectory(storageSpace))
+                if (mediaViewModel.hasFullStoragePermission()) {
+                    navController.navigate(ScreenRoute.FileDirectory(storageSpace))
+                } else {
+                    mediaViewModel.updateStorageSpace(storageSpace)
+                }
             })
             .padding(horizontal = 10.adp, vertical = 10.adp)
     ) {
@@ -349,7 +419,7 @@ private fun LazyItemScope.StorageEntrance(navController: NavController, storageS
  * @param type 媒体类型
  */
 @Composable
-private fun RowScope.MediaCategoryEntrance(count: Int, type: MediaCategory) {
+private fun RowScope.MediaCategoryEntrance(navController: NavController, count: Int, type: MediaCategory) {
     val label: Int
     val icon: Int
     when (type) {
@@ -371,7 +441,10 @@ private fun RowScope.MediaCategoryEntrance(count: Int, type: MediaCategory) {
     Card(
         modifier = Modifier
             .weight(weight = 1f)
-            .aspectRatio(ratio = 1f),
+            .aspectRatio(ratio = 1f)
+            .noRippleClickable(enabled = true, onClick = {
+                navController.navigate(ScreenRoute.MediaFiles(MediaCategory.IMAGE.name))
+            }),
         shape = RoundedCornerShape(size = 12.adp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.onPrimary
@@ -417,6 +490,7 @@ private fun MainScreenPreview() {
     FileManagerTheme {
         MainContent(
             navController = rememberNavController(),
+            mediaViewModel = viewModel(),
             mediaCount = MediaCount(),
             storageList = listOf(
                 StorageSpace(isPrimary = true, description = "内部存储", freeBytes = 1, totalBytes = 5),

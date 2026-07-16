@@ -1,5 +1,7 @@
 package com.seven.file.manager.entity
 
+import kotlinx.serialization.Serializable
+
 /**
  * CreateData:     2026/7/10
  *
@@ -7,6 +9,7 @@ package com.seven.file.manager.entity
  *
  * Description:    MediaCategory 媒体分类
  */
+@Serializable
 enum class MediaCategory {
     IMAGE, AUDIO, VIDEO;
 
