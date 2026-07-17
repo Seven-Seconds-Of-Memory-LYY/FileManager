@@ -1,12 +1,12 @@
 [versions]
 minSdk = "29"
 targetSdk = "37"
-agp = "9.2.1"
+agp = "9.3.0"
 coreKtx = "1.19.0"
 lifecycleRuntimeKtx = "2.11.0"
 activityCompose = "1.13.0"
-kotlin = "2.4.0"
-composeBom = "2026.02.01"
+kotlin = "2.4.10"
+composeBom = "2026.06.01"
 okhttp = "5.4.0"
 timber = "5.0.1"
 retrofit = "3.0.0"
@@ -14,13 +14,14 @@ retrofit2KotlinxSerializationConverter = "1.0.0"
 kotlinxSerializationJson = "1.11.0"
 mmkv = "2.4.0"
 lifecycle_version = "2.11.0"
-runtime = "1.10.6"
+runtime = "1.11.4"
 navigationRuntimeKtx = "2.9.8"
 navigationCompose = "2.9.8"
 pagingCompose = "3.5.0"
-coreSplashscreen = "1.0.1"
+coreSplashscreen = "1.2.0"
 foundation = "1.11.4"
 material3 = "1.4.0"
+ksp = "2.3.10"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -55,4 +56,5 @@ android-library = { id = "com.android.library", version.ref = "agp" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 kotlin-parcelize = { id = "org.jetbrains.kotlin.plugin.parcelize", version.ref = "kotlin" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 
